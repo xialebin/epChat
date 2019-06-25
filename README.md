@@ -1,6 +1,6 @@
-# chat_room
+# phpChat
 
-是一个使用php+swoole+redis完成的多人在线聊天室
+phpChat是一个使用php+swoole+redis完成的多人在线聊天室
 
 支持集群部署、高并发、安全验证、安全传输、压力测试以及多端控制等特性。 
 
