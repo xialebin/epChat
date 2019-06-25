@@ -1,0 +1,70 @@
+<?php
+/**
+ * 布隆过滤器
+ * Created by PhpStorm.
+ * Date: 2019/6/10
+ * Time: 23:33
+ */
+
+require ROOT.'/Bloom/BloomFilterHash.php';
+
+class BloomFilterRedis
+{
+    protected $bucket = 'bucket_name';
+    protected $hashFunction = ['ELFHash','DJBHash','DEKHash'];
+    protected $Hash = NULL;
+    protected $redis = NULL;
+
+    public function __construct($config=[],$bucket_name='')
+    {
+        $this->Hash = new BloomFilterHash;
+
+        $redis = new \Redis();
+        $this->redis = $redis;
+
+        if ($bucket_name) {
+            $this->bucket = $bucket_name;
+        }
+
+        //缓存连接
+        $this->redis->connect($config['host'],$config['port']);
+
+        if ('' != $config['password']) {
+            $this->redis->auth($config['password']);
+        }
+    }
+
+    /**
+     * 添加到集合中
+     */
+    public function add($string)
+    {
+        //开启redis事务
+        $pipe = $this->redis->multi();
+        foreach ($this->hashFunction as $function) {
+            $hash = $this->Hash->$function($string);
+            $pipe->setBit($this->bucket,$hash,1);
+        }
+        return $pipe->exec();
+    }
+
+    /**
+     * 查询是否存在, 存在的一定会存在, 不存在有一定几率会误判
+     */
+    public function exists($string)
+    {
+        $pipe = $this->redis->multi();
+        $len = strlen($string);
+        foreach ($this->hashFunction as $function) {
+            $hash = $this->Hash->$function($string, $len);
+            $pipe = $pipe->getBit($this->bucket, $hash);
+        }
+        $res = $pipe->exec();
+        foreach ($res as $bit) {
+            if ($bit == 0) {
+                return false;
+            }
+        }
+        return true;
+    }
+}
