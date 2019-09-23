@@ -9,4 +9,11 @@ define('ROOT',__DIR__);//定义初始目录
 require ROOT.'/swoole/ChatRoomOperation.php';
 
 
-new ChatRoomOperation('chat_room');
+ChatRoomOperation::run('chat_room')->start();
+
+
+/**
+ * todo
+ * 支持多聊天室
+ * 更优雅的集成组件 布隆
+ */

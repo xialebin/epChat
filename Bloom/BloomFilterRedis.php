@@ -19,28 +19,38 @@ class BloomFilterRedis
     {
         $this->Hash = new BloomFilterHash;
 
-        $redis = new \Redis();
-        $this->redis = $redis;
-
         if ($bucket_name) {
             $this->bucket = $bucket_name;
         }
 
-        //缓存连接
-        $this->redis->connect($config['host'],$config['port']);
+        if ($config) {
+            $redis = new \Redis();
+            $this->redis = $redis;
 
-        if ('' != $config['password']) {
-            $this->redis->auth($config['password']);
+            //缓存连接
+            $this->redis->connect($config['host'],$config['port']);
+
+            if ('' != $config['password']) {
+                $this->redis->auth($config['password']);
+            }
         }
     }
 
     /**
      * 添加到集合中
      */
-    public function add($string)
+    public function add($string,$redis_obj=null)
     {
+
+        if (!$redis_obj) {
+            if (!$this->redis) {
+                return false;
+            }
+            $redis_obj = $this->redis;
+        }
+
         //开启redis事务
-        $pipe = $this->redis->multi();
+        $pipe = $redis_obj->multi();
         foreach ($this->hashFunction as $function) {
             $hash = $this->Hash->$function($string);
             $pipe->setBit($this->bucket,$hash,1);
@@ -51,13 +61,21 @@ class BloomFilterRedis
     /**
      * 查询是否存在, 存在的一定会存在, 不存在有一定几率会误判
      */
-    public function exists($string)
+    public function exists($string,$redis_obj=null)
     {
-        $pipe = $this->redis->multi();
+
+        if (!$redis_obj) {
+            if (!$this->redis) {
+                return false;
+            }
+            $redis_obj = $this->redis;
+        }
+
+        $pipe = $redis_obj->multi();
         $len = strlen($string);
         foreach ($this->hashFunction as $function) {
             $hash = $this->Hash->$function($string, $len);
-            $pipe = $pipe->getBit($this->bucket, $hash);
+            $pipe = $pipe->getBit($this->bucket,$hash);
         }
         $res = $pipe->exec();
         foreach ($res as $bit) {
