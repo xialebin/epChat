@@ -157,14 +157,14 @@ class  ChatRoomOperation extends WebSocketBase
 
         switch ($data_arr['code']){
             case 3://禁言某人
-                $server->push($data_arr['data'],$this->cre_json(3,'您被禁言'));
+                $server->push($data_arr['data'],$this->creJson(3,'您被禁言'));
                 break;
             case 4://全体被禁言
                 $fds_str = (array) $server->redis->hKeys(CONNECTION_USER);
-                $rel = $this->cre_json(4,'全体被禁言');
+                $rel = $this->creJson(4,'全体被禁言');
 
                 //获取当前机器IP
-                $machine_ip_num = $this->get_current_machine();
+                $machine_ip_num = $this->getCurrentMachine();
 
                 foreach ($fds_str as $v){
                     $arr = explode('_',$v);
@@ -175,12 +175,12 @@ class  ChatRoomOperation extends WebSocketBase
                 }
                 break;
             case 5://解禁
-                $rel = $this->cre_json(5,'恢复发言');
+                $rel = $this->creJson(5,'恢复发言');
                 //全员解禁
                 if (!$data_arr['data']) {
 
                     $fds_str = (array) $server->redis->hKeys(CONNECTION_USER);
-                    $machine_ip_num = $this->get_current_machine();
+                    $machine_ip_num = $this->getCurrentMachine();
                     //推送本机器
                     foreach ($fds_str as $v){
                         $arr = explode('_',$v);
@@ -195,12 +195,12 @@ class  ChatRoomOperation extends WebSocketBase
                 break;
             case 6://心跳包
                 if (isset($data_arr['data']) && is_numeric($data_arr['data'])) {
-                    $server->push($data_arr['data'],$this->cre_json(6));
+                    $server->push($data_arr['data'],$this->creJson(6));
                 }
                 break;
             case 7://错误提示
                 if (isset($data_arr['data']) && is_numeric($data_arr['data'])) {
-                    $server->push($data_arr['data'],$this->cre_json(7,$data_arr['msg']));
+                    $server->push($data_arr['data'],$this->creJson(7,$data_arr['msg']));
                 }
                 break;
             case 8://服务器主动中断所有连接
@@ -208,7 +208,7 @@ class  ChatRoomOperation extends WebSocketBase
                 $user_ids = (array) $server->redis->hkeys(CONNECTION_USER);
 
                 $push_ids = array_merge($user_ids,$share_ids);
-                $machine_ip_num = $this->get_current_machine();
+                $machine_ip_num = $this->getCurrentMachine();
                 //本台机器的推送
                 foreach ($push_ids as $v){
 
@@ -217,7 +217,7 @@ class  ChatRoomOperation extends WebSocketBase
                     if (current($arr) != $machine_ip_num) {
                         continue;
                     }
-                    $server->push($arr[1],$this->cre_json(8));
+                    $server->push($arr[1],$this->creJson(8));
                     $server->close($arr[1],true);
                 }
                 break;
@@ -228,7 +228,7 @@ class  ChatRoomOperation extends WebSocketBase
 
                 $push_ids = array_merge($user_ids,$admin_ids,$share_ids);
 
-                $machine_ip_num = $this->get_current_machine();
+                $machine_ip_num = $this->getCurrentMachine();
 
                 //本台机器的推送
                 foreach ($push_ids as $v){
@@ -267,13 +267,13 @@ class  ChatRoomOperation extends WebSocketBase
 
             //10秒后执行此函数
             swoole_timer_after(10000, function () use($server){
-                $this->process_tick($server);
+                $this->processTick($server);
             });
         }
     }
 
     //定时器执行
-    private function process_tick($server){
+    private function processTick($server){
         swoole_timer_tick($this->config['tick_time'],function ($timer_id) use($server){
             //出队操作
             $data = $server->redis->rpop(TASK_LIST);
@@ -314,7 +314,7 @@ class  ChatRoomOperation extends WebSocketBase
         }
 
         //获取机器内网IP
-        $machine_ip_num = $this->get_current_machine();
+        $machine_ip_num = $this->getCurrentMachine();
         $fd_str = $ip.'_'.$fd;
 
         $share_ids = (array) $server->redis->hKeys(CONNECTION_SHARE);
@@ -322,7 +322,7 @@ class  ChatRoomOperation extends WebSocketBase
 
         //分享连接禁止发言
         if (in_array($fd_str,$share_ids)) {
-            $this->pushData($server,$ip,$machine_ip_num,$fd,$this->cre_json(7,'您没有权限进行操作',$fd));
+            $this->pushData($server,$ip,$machine_ip_num,$fd,$this->creJson(7,'您没有权限进行操作',$fd));
             return;
         }
 
@@ -342,10 +342,10 @@ class  ChatRoomOperation extends WebSocketBase
                     $fd_arr = explode('_',$fd_str);
                     if (current($fd_arr) == $machine_ip_num) {
                         //在本机器中
-                        $server->push($fd_arr[1],$this->cre_json(3,'您被禁言'));
+                        $server->push($fd_arr[1],$this->creJson(3,'您被禁言'));
                     }else{
                         //不在本机器中，发送到对应的服务器
-                        $this->udp_send(current($fd_arr),$this->config['udp_port'],$this->cre_json(3,'',$fd_arr[1]));
+                        $this->udpSend(current($fd_arr),$this->config['udp_port'],$this->creJson(3,'',$fd_arr[1]));
                     }
                     //禁言存入集合
                     $server->redis->sadd(NOT_ALLOW,$u_id);
@@ -356,7 +356,7 @@ class  ChatRoomOperation extends WebSocketBase
                     break;
                 }
                 $fds_str = (array) $server->redis->hKeys(CONNECTION_USER);
-                $rel = $this->cre_json(4,'全体被禁言');
+                $rel = $this->creJson(4,'全体被禁言');
 
                 foreach ($fds_str as $v){
                     $arr = explode('_',$v);
@@ -370,14 +370,14 @@ class  ChatRoomOperation extends WebSocketBase
                 $server->redis->set(CHAT_ROOM_STATUS,STATUS_ALL_DISABLED);
 
                 //推送给除本机器外的所有其他机器
-                $this->push_all_udp($server,$data_str);
+                $this->pushAllUdp($server,$data_str);
                 break;
             case 5://解禁
                 if (!in_array($fd_str,$admin_ids)) {
                     break;
                 }
                 $u_id = $data['data'];
-                $rel = $this->cre_json(5,'恢复发言');
+                $rel = $this->creJson(5,'恢复发言');
                 //全员解禁
                 if (!$u_id) {
 
@@ -396,7 +396,7 @@ class  ChatRoomOperation extends WebSocketBase
                     $server->redis->set(CHAT_ROOM_STATUS,STATUS_NORMAL);
 
                     //推送给除本机器外的所有其他机器
-                    $this->push_all_udp($server,$this->cre_json(5));
+                    $this->pushAllUdp($server,$this->creJson(5));
                 }else{//解禁某人
                     $connection_user = (array) $server->redis->hgetall(CONNECTION_USER);
                     $fd_str = array_search($u_id,$connection_user);
@@ -407,15 +407,15 @@ class  ChatRoomOperation extends WebSocketBase
                     $fd_arr = explode('_',$fd_str);
                     if (current($fd_arr) == $machine_ip_num) {
                         //在本机器中
-                        $server->push($fd_arr[1],$this->cre_json(5));
+                        $server->push($fd_arr[1],$this->creJson(5));
                     }else{
                         //不在本机器中，发送到对应的服务器
-                        $this->udp_send(current($fd_arr),$this->config['udp_port'],$this->cre_json(5,'',$fd_arr[1]));
+                        $this->udpSend(current($fd_arr),$this->config['udp_port'],$this->creJson(5,'',$fd_arr[1]));
                     }
                 }
                 break;
             case 6:
-                $this->pushData($server,$ip,$machine_ip_num,$fd,$this->cre_json(6,'',$fd));
+                $this->pushData($server,$ip,$machine_ip_num,$fd,$this->creJson(6,'',$fd));
                 break;
             case 8://服务端主动切断所有连接
                 if (!in_array($fd_str,$admin_ids)) {
@@ -433,13 +433,13 @@ class  ChatRoomOperation extends WebSocketBase
                         continue;
                     }
 
-                    $server->push($arr[1],$this->cre_json(8));
+                    $server->push($arr[1],$this->creJson(8));
                     $server->close($arr[1],true);
                 }
 
                 //推送给除本机器外的所有其他机器
-                $this->push_all_udp($server,$data_str);
-                $this->over_clear($server);
+                $this->pushAllUdp($server,$data_str);
+                $this->overClear($server);
                 break;
             case 9://点赞数量接收
                 $like_num = $data['data'];
@@ -463,11 +463,11 @@ class  ChatRoomOperation extends WebSocketBase
                             continue;
                         }
 
-                        $server->push($arr[1],$this->cre_json(9,'',$like_num+$num));
+                        $server->push($arr[1],$this->creJson(9,'',$like_num+$num));
                     }
 
                     //推送给除本机器外的所有其他机器
-                    $this->push_all_udp($server,$this->cre_json(9,'',$like_num+$num));
+                    $this->pushAllUdp($server,$this->creJson(9,'',$like_num+$num));
                 }
                 $server->redis->incrby(LIKE_HEART_NUM,$like_num);
                 break;
@@ -484,31 +484,31 @@ class  ChatRoomOperation extends WebSocketBase
 
                 $u_id = $server->redis->hget(CONNECTION_USER,$fd_str);
                 if ($server->redis->sismember(NOT_ALLOW,$u_id)) {
-                    $this->pushData($server,$ip,$machine_ip_num,$fd,$this->cre_json(7,'您被禁止发言',$fd));
+                    $this->pushData($server,$ip,$machine_ip_num,$fd,$this->creJson(7,'您被禁止发言',$fd));
                     return;
                 }
                 //全体禁言
                 if ($server->redis->get(CHAT_ROOM_STATUS) == STATUS_ALL_DISABLED) {
-                    $this->pushData($server,$ip,$machine_ip_num,$fd,$this->cre_json(7,'全体禁言中',$fd));
+                    $this->pushData($server,$ip,$machine_ip_num,$fd,$this->creJson(7,'全体禁言中',$fd));
                     return;
                 }
 
                 //发送间隔判断
-                if (!$this->pro_send_time($server,$fd_str)) {
+                if (!$this->proSendTime($server,$fd_str)) {
 
-                    $this->pushData($server,$ip,$machine_ip_num,$fd,$this->cre_json(7,'请稍后再发',$fd));
+                    $this->pushData($server,$ip,$machine_ip_num,$fd,$this->creJson(7,'请稍后再发',$fd));
                     return;
                 }
             }
 
             //长度过滤
-            if (!$this->len_filter($data['data']['content'])) {
-                $this->pushData($server,$ip,$machine_ip_num,$fd,$this->cre_json(7,'发送字符超长'),$fd);
+            if (!$this->lenFilter($data['data']['content'])) {
+                $this->pushData($server,$ip,$machine_ip_num,$fd,$this->creJson(7,'发送字符超长'),$fd);
                 return;
             }
 
             //违禁词过滤
-            $data['data']['content'] = $this->word_filter($server,$data['data']['content']);
+            $data['data']['content'] = $this->wordFilter($server,$data['data']['content']);
             $data_str = json_encode($data);
 
             $user_ids = (array) $server->redis->hkeys(CONNECTION_USER);
@@ -530,7 +530,7 @@ class  ChatRoomOperation extends WebSocketBase
             }
 
             //推送给除本机器外的所有其他机器
-            $this->push_all_udp($server,$data_str);
+            $this->pushAllUdp($server,$data_str);
         }
     }
 
@@ -554,7 +554,7 @@ class  ChatRoomOperation extends WebSocketBase
         }
 
         //发送到目标机器
-        $this->udp_send($ip,$this->config['udp_port'],$data);
+        $this->udpSend($ip,$this->config['udp_port'],$data);
         return true;
     }
 
@@ -580,7 +580,7 @@ class  ChatRoomOperation extends WebSocketBase
 
             //判断密钥
             if (!isset($request->get['key'])) {
-                $server->push($request->fd,$this->cre_json(7,'非法连接'));
+                $server->push($request->fd,$this->creJson(7,'非法连接'));
                 $server->close($request->fd,true);
                 return;
             }
@@ -590,13 +590,13 @@ class  ChatRoomOperation extends WebSocketBase
 
             if (!$data) {
                 unset($data);
-                $server->push($request->fd,$this->cre_json(7,'令牌错误或超时失效'));
+                $server->push($request->fd,$this->creJson(7,'令牌错误或超时失效'));
                 $server->close($request->fd,true);
                 return;
             }else{
 
                 //获取机器内网IP
-                $machine_ip_num = $this->get_current_machine();
+                $machine_ip_num = $this->getCurrentMachine();
 
                 //用户连接
                 if (substr($request->get['key'],0,1) == 'U') {
@@ -605,7 +605,7 @@ class  ChatRoomOperation extends WebSocketBase
                     if ($data == 'test') {
 
                         if (!$this->config['debug']) {
-                            $server->push($request->fd,$this->cre_json(7,'非法连接'));
+                            $server->push($request->fd,$this->creJson(7,'非法连接'));
                             $server->close($request->fd,true);
                             return;
                         }
@@ -613,7 +613,7 @@ class  ChatRoomOperation extends WebSocketBase
 
                     }else{
                         if (in_array($data,$user_arr)) {
-                            $server->push($request->fd,$this->cre_json(7,'用户已在线'));
+                            $server->push($request->fd,$this->creJson(7,'用户已在线'));
                             $server->close($request->fd,true);
                             return;
                         }
@@ -639,12 +639,12 @@ class  ChatRoomOperation extends WebSocketBase
                         if ($this->config['share_num'] > $share_connection) {
                             $server->redis->hset(CONNECTION_SHARE,$machine_ip_num.'_'.$request->fd,$data);
                         }else{
-                            $server->push($request->fd,$this->cre_json(7,'连接用户过多'));
+                            $server->push($request->fd,$this->creJson(7,'连接用户过多'));
                             $server->close($request->fd,true);
                             return;
                         }
                     }else{
-                        $server->push($request->fd,$this->cre_json(7,'请先登录'));
+                        $server->push($request->fd,$this->creJson(7,'请先登录'));
                         $server->close($request->fd,true);
                         return;
                     }
@@ -655,7 +655,7 @@ class  ChatRoomOperation extends WebSocketBase
                 if (substr($request->get['key'],0,1) == 'A') {
                     $user_arr = (array) $server->redis->hvals(CONNECTION_ADMIN);
                     if (in_array($data,$user_arr)) {
-                        $server->push($request->fd,$this->cre_json(7,'用户已在线'));
+                        $server->push($request->fd,$this->creJson(7,'用户已在线'));
                         $server->close($request->fd,true);
                         return;
                     }
@@ -672,7 +672,7 @@ class  ChatRoomOperation extends WebSocketBase
                 unset($machine_ip_num);
             }
         }else{
-            $server->push($request->fd,$this->cre_json(7,'服务器出现错误'));
+            $server->push($request->fd,$this->creJson(7,'服务器出现错误'));
             $server->close($request->fd,true);
             return;
         }
@@ -687,7 +687,7 @@ class  ChatRoomOperation extends WebSocketBase
      */
     public function onMessage($server,$frame){
         //入队操作
-        $server->redis->lpush(TASK_LIST,$frame->fd.'&&'.$this->get_current_machine().'&&'.$frame->data);
+        $server->redis->lpush(TASK_LIST,$frame->fd.'&&'.$this->getCurrentMachine().'&&'.$frame->data);
     }
 
     /**
@@ -697,7 +697,7 @@ class  ChatRoomOperation extends WebSocketBase
      */
     public function onClose($server,$fd){
 
-        $machine_ip_num = $this->get_current_machine();
+        $machine_ip_num = $this->getCurrentMachine();
         $fd_str = $machine_ip_num.'_'.$fd;
 
         $is_share = $server->redis->hexists(CONNECTION_SHARE,$fd_str);
@@ -720,14 +720,14 @@ class  ChatRoomOperation extends WebSocketBase
     /**
      * 获取当前机器的IP，返回整型
      */
-    private function get_current_machine(){
+    private function getCurrentMachine(){
         //获取机器内网IP
         return $this->convertIpToLong(current(explode(' ',exec('hostname -I'))));
     }
 
 
     //全部中断时，清理内存
-    private function over_clear($server){
+    private function overClear($server){
         $server->redis->del(NOT_ALLOW);
         $server->redis->del(MACHINE_IPS);
         $server->redis->del(SEND_TIME_ROLE);
@@ -735,7 +735,7 @@ class  ChatRoomOperation extends WebSocketBase
     }
 
     //发送间隔判断
-    private function pro_send_time($server,$fd_str){
+    private function proSendTime($server,$fd_str){
 
         if (!$fd_str) {
             return false;
@@ -761,7 +761,7 @@ class  ChatRoomOperation extends WebSocketBase
      * @param $word
      * @return bool
      */
-    public function len_filter($word){
+    public function lenFilter($word){
         if (mb_strlen($word,'utf8')>$this->config['data_len']) {
             return false;
         }
@@ -773,7 +773,7 @@ class  ChatRoomOperation extends WebSocketBase
      * 关键词过滤
      * @param $word
      */
-    public function word_filter($server,$word){
+    public function wordFilter($server,$word){
         if (!$word) {
             return $word;
         }
@@ -812,9 +812,9 @@ class  ChatRoomOperation extends WebSocketBase
      * 推送给所有已经连接的服务器
      * @param $data
      */
-    public function push_all_udp($server,$data){
+    public function pushAllUdp($server,$data){
 
-        $machine_ip_num = $this->get_current_machine();
+        $machine_ip_num = $this->getCurrentMachine();
 
         //推送给除本机器外的所有其他机器
         $other_machine = array_diff( (array) $server->redis->smembers(MACHINE_IPS),[$machine_ip_num]);
@@ -822,7 +822,7 @@ class  ChatRoomOperation extends WebSocketBase
         if ($other_machine) {
             foreach ($other_machine as $v){
                 //推送给其他机器
-                $this->udp_send($v,$this->config['udp_port'],$data);
+                $this->udpSend($v,$this->config['udp_port'],$data);
             }
         }
     }
@@ -834,7 +834,7 @@ class  ChatRoomOperation extends WebSocketBase
      * @param int $port
      * @param string $data
      */
-    public function udp_send($host,$port=9502,$data=''){
+    public function udpSend($host,$port=9502,$data=''){
 
         if (is_numeric($host)) {
             $host = $this->convertIpToString($host);
@@ -871,7 +871,7 @@ class  ChatRoomOperation extends WebSocketBase
      * @param string $data
      * @param int $type
      */
-    protected function cre_json($code=1,$msg='',$data=[]){
+    protected function creJson($code=1,$msg='',$data=[]){
 
         $rel = [
             'code' => $code,
