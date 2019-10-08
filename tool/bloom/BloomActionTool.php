@@ -1,14 +1,12 @@
 <?php
 /**
  * 布隆过滤器
- * Created by PhpStorm.
- * Date: 2019/6/10
- * Time: 23:33
+ * @author xialebin@163.com
  */
 
-require ROOT.'/Bloom/BloomFilterHash.php';
+require ROOT.'/tool/bloom/BloomHashTool.php';
 
-class BloomFilterRedis
+class BloomActionTool
 {
     protected $bucket = 'bucket_name';
     protected $hashFunction = ['ELFHash','DJBHash','DEKHash'];
@@ -17,7 +15,7 @@ class BloomFilterRedis
 
     public function __construct($config=[],$bucket_name='')
     {
-        $this->Hash = new BloomFilterHash;
+        $this->Hash = new BloomHashTool;
 
         if ($bucket_name) {
             $this->bucket = $bucket_name;

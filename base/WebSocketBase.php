@@ -1,20 +1,25 @@
 <?php
 
 /**
- * @websocket 基础类
- * Class WebSocketBase
+ * 提供用于长连接的基础抽象类
+ * @author xialebin@163.com
  */
+
+require ROOT.'/trait/UtilFunction.php';
+require ROOT.'/trait/BloomGroup.php';
 abstract class WebSocketBase
 {
+    use UtilFunction;
+    use BloomGroup;
     public $host = '0.0.0.0';
     public $server = NULL;
-    public $error_log_path = ROOT.DIRECTORY_SEPARATOR.'log';
     public $env_extension = ['redis','swoole'];
     public $env_version = ['php'=>'7.0'];
     public $port = 9501;
     public $run_type = '';
     protected $config = [];
     protected $cache_config = [];
+    public static $run_flag = 0;//运行状态
 
     //回调函数
     abstract function onOpen($server,$request);
@@ -24,6 +29,10 @@ abstract class WebSocketBase
     //检查自定义参数
     abstract function checkSelfParam($config);
 
+    /**
+     * WebSocketBase constructor.
+     * @param string $type 连接类型
+     */
     public function __construct($type='')
     {
         //绑定运行环境类型
@@ -37,16 +46,19 @@ abstract class WebSocketBase
     }
 
 
-    //注册操作
+    //注册
     public function registerOperation(){
 
         //注册错误回调
         set_error_handler(function ($no,$str,$file,$line) {
 
             $message = "[$no] $str error on line $line in $file";
-            $this->proError($message);
+            $this->submitLog($message);
 
         },E_ERROR);
+
+        //注册自动装载函数
+        spl_autoload_register([$this,'loadClass']);
 
         //注册配置属性
         $this->registerParam();
@@ -56,11 +68,12 @@ abstract class WebSocketBase
     }
 
 
-    //注册常量
+    //常量注册
     public function registerConstant(){
 
         //redis字段统一前缀
         define('REDIS_PRE',$this->config['redis_pre']);
+        define('DIR',DIRECTORY_SEPARATOR);
     }
 
     //注册参数
@@ -78,33 +91,36 @@ abstract class WebSocketBase
         $this->host = $this->config['host'];
     }
 
+
     //注册环境
     public function registerEnv($extension=[],$version=[]){
         $this->env_extension = $extension;
         $this->env_version = $version;
     }
 
+
     //检查参数
     protected function checkParam(){
 
         if (!is_file(ROOT.'/config.php')) {
-            $this->proError('The configuration file does not exist');
+            $this->submitLog('The configuration file does not exist');
         }
 
         $config = include(ROOT.'/config.php');
 
         if (!is_array($config)) {
-            $this->proError('Config file error');
+            $this->submitLog('Config file error');
         }
 
         $message = $this->checkSelfParam($config);
 
         if ($message) {
-            $this->proError($message);
+            $this->submitLog($message);
         }
 
         return $config;
     }
+
 
     //运行服务
     public final static function run($type=''){
@@ -122,6 +138,7 @@ abstract class WebSocketBase
 
         return $object;
     }
+
 
     //服务开启
     public function start(){
@@ -156,7 +173,7 @@ abstract class WebSocketBase
             $extension = extension_loaded($v);
 
             if (!$extension) {
-                $this->proError($v.' extensions are essential');
+                $this->submitLog($v.' extensions are essential');
             }
         }
 
@@ -164,115 +181,48 @@ abstract class WebSocketBase
 
             if ( ($php = strtolower($k)) == 'php') {
                 if ($this->judgeVersion(phpversion(),$v) == -1) {
-                    $this->proError($php.' version should be at least '.$v);
+                    $this->submitLog($php.' version should be at least '.$v);
                 }
             }else{
                 if ($this->judgeVersion(phpversion($k),$v) == -1) {
-                    $this->proError($k.' version should be at least '.$v);
+                    $this->submitLog($k.' version should be at least '.$v);
                 }
             }
         }
     }
 
-    //处理报错信息
-    public function proError($message,$type=0){
 
-        $this->writeLog($message,$this->getLogPath('ERROR'));
+    //进程开启回调
+    public function workStart($redis_obj=null){
 
-        switch ($type){
-            case 0:
-                $pre = 'ERROR';
-                break;
-            case 1:
-                $pre = 'NOTICE';
-                break;
-            default:
-                $pre = 'ERROR';
-                break;
+        if (self::$run_flag == 1) {
+            return;
         }
 
-        echo $pre.": ".$message.PHP_EOL;
-        exit();
+        self::$run_flag = 1;
+
+        //$this->submitLog('进程成功开启','RUN');
+
+        //导入违禁词
+        if (!$redis_obj->exists($this->config['bucket_name'])) {
+
+            $this->initIllegalWord($this->config['bucket_name'],$redis_obj);
+
+        }else{
+            return;
+        }
     }
 
 
-    //获取日志路径
-    public function getLogPath($type){
+    //自动加载类
+    public function loadClass($class){
 
-        switch ($type){
-            //错误日志
-            case 'ERROR':
-                $path = $this->error_log_path.DIRECTORY_SEPARATOR.date('Ymd').DIRECTORY_SEPARATOR.'error_log';
-                if (!is_dir($path)) {
-                    mkdir($path,0777,true);
-                }
-                return $path.DIRECTORY_SEPARATOR.'error_log.txt';
-            default:
-                break;
+        $class_arr = explode('_',self::unCamelize($class));
+
+        //加载工具类
+        if ( ($dir_name = array_pop($class_arr)) == 'tool') {
+            require ROOT.DIR.$dir_name.DIR.current($class_arr).DIR.$class.'.php';
         }
-        return '';
-    }
-
-
-    //写入日志
-    public function writeLog($content='',$path=''){
-
-        if (!$content || !$path) {
-            return false;
-        }
-
-        $content = date('Y-m-d H:i:s').' - '.$content.PHP_EOL;
-
-        try{
-
-            $fp = fopen($path,'a+');
-            fwrite($fp,$content);
-            fclose($fp);
-            return true;
-
-        }catch (Exception $e){
-            return false;
-        }
-
-    }
-
-    //比较版本号
-    public function judgeVersion($version_1='',$version_2=''){
-
-        $arr_1 = explode('.',$version_1);
-        $arr_2 = explode('.',$version_2);
-
-        $num_1 = count($arr_1);
-        $num_2 = count($arr_2);
-
-        $num = max($num_1,$num_2);
-        $rec = $num_1 > $num_2 ? ($num_1 - $num_2) : ($num_2 - $num_1);
-
-
-        foreach (array_merge($arr_1,$arr_2) as $v){
-
-            if (!is_numeric($v)) {
-                return 0;
-            }
-        }
-
-
-        for ($i=0;$i<$num;$i++){
-
-            if ($i < ($num - $rec)) {
-
-                if ($arr_1[$i] == $arr_2[$i]) {
-                    continue;
-                }else{
-                    return $arr_1[$i] > $arr_2[$i] ? 1 : -1;
-                }
-
-            }else{
-                return isset($arr_1[$i]) ? 1 : -1;
-            }
-        }
-
-        return 0;
     }
 
 }

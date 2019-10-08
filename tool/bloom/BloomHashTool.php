@@ -1,12 +1,10 @@
 <?php
 /**
  * 布隆过滤器要使用的哈希函数
- * Created by PhpStorm.
- * Date: 2019/6/10
- * Time: 23:32
+ * @author xialebin@163.com
  */
 
-class BloomFilterHash
+class BloomHashTool
 {
     /**
      * 由Justin Sobel编写的按位散列函数

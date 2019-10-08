@@ -1,14 +1,15 @@
 <?php
 require ROOT.'/base/WebSocketBase.php';
-require ROOT.'/Bloom/BloomFilterRedis.php';
 
 /**
- * @chartRoom 直播聊天室
- * Class ChatRoom
+ * @chartRoom Class ChatRoom 直播聊天室
+ * @author xialebin@163.com
  */
-class  ChatRoomOperation extends WebSocketBase
+
+class ChatRoomOperation extends WebSocketBase
 {
-    private $bloomFilterObj = NULL;//布隆过滤器对象
+    //布隆过滤器对象
+    private $bloomFilterObj = NULL;
 
     //聊天室配置文件
     public $chat_room_param = [
@@ -58,9 +59,8 @@ class  ChatRoomOperation extends WebSocketBase
         define('STATUS_ALL_DISABLED',2);//全体禁言
     }
 
-    /**
-     * 检查自定义参数
-     */
+
+    //检查自定义参数
     public function checkSelfParam($config=[])
     {
         if ($this->run_type != 'chat_room') {
@@ -86,14 +86,11 @@ class  ChatRoomOperation extends WebSocketBase
         return '';
     }
 
-    /**
-     * 前置操作
-     * @return bool|void
-     */
+    //前置操作
     public function init(){
 
         //初始化布隆过滤器
-        $this->bloomFilterObj = new BloomFilterRedis([],$this->config['bucket_name']);
+        $this->bloomFilterObj = self::getBloomOperationObj($this->config['bucket_name']);
 
         //设置参数
         $arr = [
@@ -119,8 +116,8 @@ class  ChatRoomOperation extends WebSocketBase
 
     /**
      * udp接收数据回调接口
-     * @param $server
-     * @param $data
+     * @param object $server 服务对象
+     * @param string $data 接收数据
      * @param $addr
      */
     public function onPacket($server,$data,$addr){
@@ -255,7 +252,13 @@ class  ChatRoomOperation extends WebSocketBase
         //php socket连接限制超时时间
         ini_set('default_socket_timeout', -1);
         $redis = new \Redis();
-        $redis->connect($this->cache_config['host'],$this->cache_config['port']);
+        $con = $redis->connect($this->cache_config['host'],$this->cache_config['port']);
+
+        if (!$con) {
+            //todo 关闭服务
+            return;
+        }
+
         if ('' != $this->cache_config['password']) {
             $redis->auth($this->cache_config['password']);
         }
@@ -264,6 +267,9 @@ class  ChatRoomOperation extends WebSocketBase
 
         //如是work进程而不是task进程，则启动出队操作
         if (!$server->taskworker) {
+
+            //回调父类方法
+            $this->workStart($redis);
 
             //10秒后执行此函数
             swoole_timer_after(10000, function () use($server){
