@@ -9,3 +9,7 @@ phpChat是一个使用php+swoole+redis完成的多人在线聊天室
 是一个性能不错的聊天室的实现。
 
 
+
+CODE:ERROR/TIP 
+
+MSG:'出现了错误'

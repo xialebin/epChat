@@ -1,22 +1,16 @@
 <?php
 
 return [
-    'redis' => [
-        // 缓存前缀
-        'prefix' => '',
-        'host' => '127.0.0.1',
-        'port' => 6379,
-        'password' => '',
-        // 缓存有效期 0表示永久缓存
-        'expire' => 0,
-    ],
-
     //聊天室配置
-    'chat_room' => [
-        'port' => 9501,
-        'host' => '0.0.0.0',
+   [
+        'type' => 'ChatRoom',
+        'class_name' => 'test',
+        'status' => true,
+        'port' => 'default',
+        'host' => 'default',
         'share_num' => 1, //每个用户分享直播能被多少未登录用户同时连接
         'process_name' => 'chat_room',//进程别名
+        'is_cluster' => true,
         'udp_host' => '0.0.0.0',
         'udp_port' => 9502,//udp协议 接包服务监听端口
         'udp_key' => '123456;;',//服务端udp接收包时的密钥
@@ -29,8 +23,9 @@ return [
         'like_num_step' => 1000,//新增多少点赞的数量会同步一次数据
         'debug' => false,//是否开启调试，允许测试通达打开
         'max_chat_room' => 100,//最多同时开启多少个聊天室
-        //'error_log_path' => ROOT.'/log',//错误日志路径
         'redis_pre' => 'bin_',//Redis字段统一前缀
+        'redis' => 'default',
+        'message_flag' => [],
     ],
     /*
      * worker_num 与 task_worker_num的配置

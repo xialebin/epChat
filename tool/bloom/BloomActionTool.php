@@ -3,8 +3,8 @@
  * 布隆过滤器
  * @author xialebin@163.com
  */
+namespace chat\tool\bloom;
 
-require ROOT.'/tool/bloom/BloomHashTool.php';
 
 class BloomActionTool
 {
@@ -15,7 +15,7 @@ class BloomActionTool
 
     public function __construct($config=[],$bucket_name='')
     {
-        $this->Hash = new BloomHashTool;
+        $this->Hash = new BloomHashTool();
 
         if ($bucket_name) {
             $this->bucket = $bucket_name;

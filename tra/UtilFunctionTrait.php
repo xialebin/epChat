@@ -3,10 +3,11 @@
  * 工具方法
  * @author xialebin@163.com
  */
+namespace chat\tra;
 
-trait UtilFunction
+
+trait UtilFunctionTrait
 {
-
     //比较版本号
     public function judgeVersion($version_1='',$version_2=''){
 
@@ -124,4 +125,35 @@ trait UtilFunction
         return strtolower(preg_replace('/([a-z])([A-Z])/', "$1" . $separator . "$2", $camelCaps));
     }
 
+    //IP转化为IPv2字符串
+    public function convertIpToString($ip)
+    {
+        $long = 4294967295 - ($ip - 1);
+        return long2ip(-$long);
+    }
+
+    //字符串转化为整型
+    public function convertIpToLong($ip)
+    {
+        return sprintf("%u", ip2long($ip));
+    }
+
+
+    /**
+     * 输出数据到客户端
+     * @param int $code
+     * @param string $msg
+     * @param string $data
+     * @param int $type
+     */
+    protected function creJson($code=1,$msg='',$data=[]){
+
+        $rel = [
+            'code' => $code,
+            'msg' => $msg,
+            'data' => $data
+        ];
+
+        return json_encode($rel);
+    }
 }

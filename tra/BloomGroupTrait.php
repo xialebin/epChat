@@ -2,8 +2,9 @@
 /**
  * 布隆过滤器组件执行入口
  */
+namespace chat\tra;
 
-trait BloomGroup
+trait BloomGroupTrait
 {
 
     //初始化违禁词

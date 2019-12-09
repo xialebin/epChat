@@ -3,6 +3,7 @@
  * 布隆过滤器要使用的哈希函数
  * @author xialebin@163.com
  */
+namespace chat\tool\bloom;
 
 class BloomHashTool
 {
