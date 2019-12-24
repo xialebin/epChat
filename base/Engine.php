@@ -8,7 +8,6 @@
 
 namespace chat\base;
 
-use chat\tra\AutoloadClassTrait;
 use chat\tra\UtilFunctionTrait;
 
 class Engine
